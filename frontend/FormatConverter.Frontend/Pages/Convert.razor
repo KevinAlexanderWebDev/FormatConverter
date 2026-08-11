@@ -1,0 +1,69 @@
+﻿@page "/convert"
+@using FormatConverter.Frontend.Services
+@inject ConversionApiClient Api
+@inject IJSRuntime JS
+
+<PageTitle>Conversor de Archivos</PageTitle>
+<h1>Conversor de Office a PDF</h1>
+<p>Sube un archivo Word, Excel o PowerPoint y convierte a PDF</p>
+
+<InputFile OnChange="OnFileSelected" accept=".docx,.xlsx,.pptx" />
+
+@if (SelectedFileName is not null)
+{
+    <p><strong>@SelectedFileName</strong></p>
+}
+
+<button class="btn btn-primary" disabled="@(IsBusy || SelectedFile is null)" @onclick="ConvertFile">
+    @(IsBusy ? "Convirtiendo..." : "Convertir a PDF")
+</button>
+
+@if (IsBusy)
+{
+    <div class="spinner-border text-primary" role="status"></div>
+}
+
+@if (ErrorMessage is not null)
+{
+    <p class="text-danger">@ErrorMessage</p>
+}
+
+@code {
+    private Stream? SelectedFile;
+    private string? SelectedFileName;
+    private bool IsBusy;
+    private string? ErrorMessage;
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        SelectedFile = null;
+        SelectedFileName = null;
+        ErrorMessage = null;
+
+        var file = e.File;
+        if (file is null) return;
+        SelectedFile = file.OpenReadStream(maxAllowedSize: 25_000_000); // Limite de subida maxima de bytes (25 mb).
+        SelectedFileName = file.Name;
+    }
+
+    private async Task ConvertFile()
+    {
+        if (SelectedFile is null) return;
+        IsBusy = true;
+        ErrorMessage = null;
+        try
+        {
+            var pdfBytes = await Api.ConvertAsync(SelectedFile, SelectedFileName!);
+            var outputName = Path.GetFileNameWithoutExtension(SelectedFileName) + ".pdf";
+            await JS.InvokeVoidAsync("downloadFile", outputName, pdfBytes);
+        } catch (ConversionException ex)
+        {
+            ErrorMessage = ex.Message;
+        } catch (Exception)
+        {
+            ErrorMessage = "No se pudo conectar con el servidor";
+        } finally {
+            IsBusy = false;
+        }
+    }
+}
