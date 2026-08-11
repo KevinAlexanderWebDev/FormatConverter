@@ -1,4 +1,5 @@
-﻿@page "/convert"
+﻿@page "/"
+@page "/convert"
 @using FormatConverter.Frontend.Services
 @inject ConversionApiClient Api
 @inject IJSRuntime JS
@@ -42,7 +43,17 @@
 
         var file = e.File;
         if (file is null) return;
-        SelectedFile = file.OpenReadStream(maxAllowedSize: 25_000_000); // Limite de subida maxima de bytes (25 mb).
+
+        // Fallo rápido del lado del cliente: evita esperar a que el backend
+        // rechace un archivo enorme y muestra un mensaje claro de inmediato.
+        const long MaxBytes = 25_000_000;  // 25 MB, igual que en el backend
+        if (file.Size > MaxBytes)
+        {
+            ErrorMessage = "El archivo supera el límite de 25 MB.";
+            return;
+        }
+
+        SelectedFile = file.OpenReadStream(maxAllowedSize: MaxBytes);
         SelectedFileName = file.Name;
     }
 
