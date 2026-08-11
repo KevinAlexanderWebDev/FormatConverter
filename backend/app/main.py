@@ -6,13 +6,15 @@ from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import ALLOWED_EXTENSIONS, MAX_UPLOAD_BYTES
 from app.converter import convert_office_to_pdf
+import os
 
 #CORS: Permite que otro navegador cuyo puerto es distinto pueda llamar a la API por su puerto y el navegador lo bloquee
 # Instancia de la app: registramos todas las rutas
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:5291").split(",")
 app = FastAPI(title="Format Converter Api")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5291"],
+    allow_origins=CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
