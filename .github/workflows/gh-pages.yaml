@@ -1,8 +1,10 @@
-﻿name: Deploy Frontend a GitHub Pages
+name: Deploy a GitHub Pages
 
 on:
-  push:
-    branches: [ main ]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -15,6 +17,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -22,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -32,7 +37,10 @@ jobs:
         uses: SteveSandersonMS/ghaction-rewrite-base-href@v1
         with:
           working_directory: frontend/FormatConverter.Frontend/wwwroot
-          base_href: /Format-Converter/
+          base_href: /FormatConverter/
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
 
       - name: Publicar
         run: dotnet publish frontend/FormatConverter.Frontend -c Release -o publish
