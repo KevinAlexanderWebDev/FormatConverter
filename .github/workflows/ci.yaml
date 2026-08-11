@@ -19,7 +19,7 @@ jobs:
           python-version: "3.12"
 
       - name: Instalar dependencias
-        run: pip install -r backend/requirements.txt
+        run: pip install -r backend/requirements-dev.txt
 
       - name: Validar appsettings.json
         run: python -m json.tool frontend/FormatConverter.Frontend/wwwroot/appsettings.json
