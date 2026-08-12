@@ -35,6 +35,9 @@ jobs:
 
       - name: Reescribir base href
         uses: run: sed -i 's|<base href="/"|<base href="/FormatConverter/"|' frontend/FormatConverter.Frontend/wwwroot/index.html
+        with:
+          working_directory: frontend/FormatConverter.Frontend/wwwroot
+          base_href: /FormatConverter/
 
       - name: Configurar Pages
         uses: actions/configure-pages@v5
