@@ -11,7 +11,14 @@ from app.converter import convert_office_to_pdf
 
 # CORS: permite que el navegador (otro origen) pueda llamar a la API
 # sin que el navegador lo bloquee. Orígenes vía variable de entorno.
-CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:5291, https://kevinalexanderwebdev.github.io").split(",")
+CORS_ORIGINS = [
+    o.strip()
+    for o in os.environ.get(
+        "CORS_ORIGIN", 
+        "http://localhost:5291,https://kevinalexanderwebdev.github.io",
+    ).split(",")
+    if o.strip()
+]
 
 app = FastAPI(title="Format Converter API")
 app.add_middleware(
