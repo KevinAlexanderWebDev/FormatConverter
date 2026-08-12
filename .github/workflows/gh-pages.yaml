@@ -34,10 +34,10 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Reescribir base href
-        uses: SteveSandersonMS/ghaction-rewrite-base-href@v1
-        with:
-          working_directory: frontend/FormatConverter.Frontend/wwwroot
-          base_href: /FormatConverter/
+        uses: run: sed -i 's|<base href="/"|<base href="/FormatConverter/"|' frontend/FormatConverter.Frontend/wwwroot/index.html
+        # with:
+        #   working_directory: frontend/FormatConverter.Frontend/wwwroot
+        #   base_href: /FormatConverter/
 
       - name: Configurar Pages
         uses: actions/configure-pages@v5
