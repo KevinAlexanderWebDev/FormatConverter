@@ -4,42 +4,58 @@
 @inject ConversionApiClient Api
 @inject IJSRuntime JS
 
-<PageTitle>Conversor de Archivos</PageTitle>
-<h1>Conversor de Office a PDF</h1>
-<p>Sube un archivo Word, Excel o PowerPoint y convierte a PDF</p>
+<PageTitle>Atelier Papel · Conversor de Archivos</PageTitle>
 
-<InputFile OnChange="OnFileSelected" accept=".docx,.xlsx,.pptx" />
+<section class="page">
+    <h1 class="page__title">Convierte tus archivos a PDF</h1>
+    <p class="page__lede">Arrastra o elige un archivo de Word, Excel o PowerPoint. Listo para descargar en segundos.</p>
 
-@if (SelectedFileName is not null)
-{
-    <p><strong>@SelectedFileName</strong></p>
-}
+    <label class="dropzone @(HasFile ? "is-loaded" : "")">
+        <span class="dropzone__hint">Arrastra o toca para subir</span>
+        <span class="dropzone__formats">DOCX · XLSX · PPTX</span>
+        @if (SelectedFileName is not null)
+        {
+            <span class="dropzone__file">@SelectedFileName</span>
+        }
+        <InputFile class="dropzone__input" OnChange="OnFileSelected" accept=".docx,.xlsx,.pptx" />
+    </label>
+    <button class="seal-button" disabled="@(IsBusy || SelectedFile is null)" @onclick="ConvertFile">
+        @(IsBusy ? "Convirtiendo..." : "Convertir a PDF")
+    </button>
 
-<button class="btn btn-primary" disabled="@(IsBusy || SelectedFile is null)" @onclick="ConvertFile">
-    @(IsBusy ? "Convirtiendo..." : "Convertir a PDF")
-</button>
+    @if (IsBusy)
+    {
+        <div class="ink-progress" role="progressbar" aria-label="Conversión en curso"></div>
+    }
 
-@if (IsBusy)
-{
-    <div class="spinner-border text-primary" role="status"></div>
-}
+    @if (ErrorMessage is not null)
+    {
+        <p class="error-note" role="alert">@ErrorMessage</p>
+    }
 
-@if (ErrorMessage is not null)
-{
-    <p class="text-danger">@ErrorMessage</p>
-}
+    @if (Converted && SelectedFileName is not null)
+    {
+        <div class="result-sheet">
+            <span class="result-sheet__stamp">Convertido · PDF</span>
+            <span class="result-sheet__name">@SelectedFileName</span>
+        </div>
+    }
+</section>
 
 @code {
     private Stream? SelectedFile;
     private string? SelectedFileName;
     private bool IsBusy;
+    private bool Converted;
     private string? ErrorMessage;
+    private bool HasFile => SelectedFileName is not null;
 
     private void OnFileSelected(InputFileChangeEventArgs e)
     {
         SelectedFile = null;
         SelectedFileName = null;
         ErrorMessage = null;
+        Converted = false;
 
         var file = e.File;
         if (file is null) return;
@@ -67,6 +83,7 @@
             var pdfBytes = await Api.ConvertAsync(SelectedFile, SelectedFileName!);
             var outputName = Path.GetFileNameWithoutExtension(SelectedFileName) + ".pdf";
             await JS.InvokeVoidAsync("downloadFile", outputName, pdfBytes);
+            Converted = true;
         } catch (ConversionException ex)
         {
             ErrorMessage = ex.Message;

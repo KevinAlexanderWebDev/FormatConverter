@@ -1,16 +1,14 @@
 ﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+<header class="page-header">
+    <a class="page-header__brand" href="/">
+        <span class="page-header__seal" aria-hidden="true">✏️</span>
+        <span class="page-header__name">Atelier Papel</span>
+    </a>
+    <span class="page-header__tag">Word · Excel · PowerPoint → PDF</span>
+</header>
+<main>
+    <article class="content">
+        @Body
+    </article>
+</main>
