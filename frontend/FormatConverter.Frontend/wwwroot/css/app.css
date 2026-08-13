@@ -391,6 +391,39 @@ code {
     color: #A63A2B;
 }
 
+/* ---------- Chips de formato de salida ---------- */
+.format-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin: 0 auto 1.25rem auto;
+    max-width: 32rem;
+}
+
+.format-chip {
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: .5rem 1.1rem;
+    font: 600 .78rem var(--sans);
+    letter-spacing: .05em;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: border-color .18s ease, color .18s ease, background .18s ease, transform .18s ease;
+}
+
+.format-chip:hover {
+    border-color: var(--terracotta);
+    color: var(--terracotta);
+    transform: translateY(-1px);
+}
+
+.format-chip.is-active {
+    background: var(--terracotta);
+    border-color: var(--terracotta);
+    color: var(--paper);
+}
+
 /* ---------- Escala móvil → escritorio ---------- */
 @media (min-width: 640px) {
     .dropzone {

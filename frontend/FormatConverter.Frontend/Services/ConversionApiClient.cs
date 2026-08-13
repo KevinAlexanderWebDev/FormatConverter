@@ -8,12 +8,13 @@ namespace FormatConverter.Frontend.Services {
             _httpClient = httpClient;
         }
 
-        public async Task<byte[]> ConvertAsync(Stream fileStream, string fileName) {
+        public async Task<byte[]> ConvertAsync(Stream fileStream, string fileName, string toFormat = "pdf") {
             using var content = new MultipartFormDataContent();
 
             var fileContent = new StreamContent(fileStream);
             fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
             content.Add(fileContent, "file", fileName);
+            content.Add(new StringContent(toFormat), "to_format");
 
             using var response = await _httpClient.PostAsync("/convert", content);
 

@@ -2,12 +2,12 @@ import os
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-from app.config import ALLOWED_EXTENSIONS, MAX_UPLOAD_BYTES
-from app.converter import convert_office_to_pdf
+from app.config import CONVERSION_MATRIX, INPUT_EXTENSIONS, MAX_UPLOAD_BYTES, MIME_TYPES
+from app.converter import convert_file
 
 # CORS: permite que el navegador (otro origen) pueda llamar a la API
 # sin que el navegador lo bloquee. Orígenes vía variable de entorno.
@@ -36,14 +36,27 @@ def health():
 
 
 @app.post("/convert")
-def convert(file: UploadFile = File(...)):
-    # 1) Validamos la extensión ANTES de escribir nada en disco.
+def convert(file: UploadFile = File(...), to_format: str = Form("pdf")):
+    # 1) Validamos la extensión de entrada ANTES de escribir nada en disco.
     #    file.filename lo controla el cliente: no confiamos en él.
     ext = Path(file.filename or "").suffix.lower()
-    if ext not in ALLOWED_EXTENSIONS:
+    if ext not in INPUT_EXTENSIONS:
         raise HTTPException(
             status_code=415,
-            detail=f"Formato no soportado. Usa: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+            detail=f"Formato de entrada no soportado: {ext}",
+        )
+
+    # 2) Normalizamos y validamos el formato de salida (415 temprano).
+    to_ext = to_format.lower().lstrip(".")
+    if ext == f".{to_ext}":
+        raise HTTPException(
+            status_code=415,
+            detail="El formato de entrada es igual al de salida.",
+        )
+    if to_ext not in CONVERSION_MATRIX.get(ext, {}):
+        raise HTTPException(
+            status_code=415,
+            detail=f"No se soporta convertir de {ext} a .{to_ext}",
         )
 
     # 2) Carpeta temporal privada para esta conversión.
@@ -70,19 +83,18 @@ def convert(file: UploadFile = File(...)):
 
         # 4) Conversión. Los errores internos se traducen a HTTP 500 con mensaje claro.
         try:
-            pdf_path = convert_office_to_pdf(source_path, tmp_dir)
+            output_path = convert_file(source_path, tmp_dir, ext, to_ext)
         except RuntimeError as error:
             raise HTTPException(status_code=500, detail=str(error))
 
-        # 5) Leemos el PDF en memoria DENTRO del "with".
+        # 5) Leemos el archivo de salida en memoria DENTRO del "with".
         #    El TemporaryDirectory se borra al salir del bloque, pero la respuesta
         #    HTTP se envía DESPUÉS de retornar: el archivo ya no existiría.
-        pdf_bytes = pdf_path.read_bytes()
+        bytes_out = output_path.read_bytes()
 
-    # 6) Devolvemos el PDF como archivo descargable
+    # 6) Devolvemos el archivo como descarga
     return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
+        content=bytes_out,
+        media_type=MIME_TYPES.get(to_ext, "application/octet-stream"),
         headers={"Content-Disposition":
-                f'attachment; filename="{Path(file.filename).stem}.pdf"'},
-    )
+                 f'attachment; filename="{Path(file.filename).stem}.{to_ext}"'},)

@@ -7,20 +7,36 @@
 <PageTitle>Atelier Papel · Conversor de Archivos</PageTitle>
 
 <section class="page">
-    <h1 class="page__title">Convierte tus archivos a PDF</h1>
-    <p class="page__lede">Arrastra o elige un archivo de Word, Excel o PowerPoint. Listo para descargar en segundos.</p>
+    <h1 class="page__title">Convierte tus archivos al formato que necesites</h1>
+    <p class="page__lede">Office, PDF e imágenes. Elige el archivo, marca el formato de salida y descarga al instante.</p>
 
     <label class="dropzone @(HasFile ? "is-loaded" : "")">
         <span class="dropzone__hint">Arrastra o toca para subir</span>
-        <span class="dropzone__formats">DOCX · XLSX · PPTX</span>
+        <span class="dropzone__formats">DOCX · XLSX · PPTX · PDF · PNG · JPG · WEBP</span>
         @if (SelectedFileName is not null)
         {
             <span class="dropzone__file">@SelectedFileName</span>
         }
-        <InputFile class="dropzone__input" OnChange="OnFileSelected" accept=".docx,.xlsx,.pptx" />
+        <InputFile class="dropzone__input" OnChange="OnFileSelected" accept=".docx,.xlsx,.pptx,.pdf,.png,.jpg,.jpeg,.webp,.gif,.bmp,.tif,.tiff" />
     </label>
+
+    @if (Formats is not null)
+    {
+        <div class="format-row" role="group" aria-label="Formato de salida">
+            @foreach (var (target, label) in Formats)
+            {
+                <button
+                    type="button"
+                    class="format-chip @(TargetFormat.ToLower() == target ? "is-active" : "")"
+                    @onclick="() => SelectFormat(target)">
+                    @label
+                </button>
+            }
+        </div>
+    }
+
     <button class="seal-button" disabled="@(IsBusy || SelectedFile is null)" @onclick="ConvertFile">
-        @(IsBusy ? "Convirtiendo..." : "Convertir a PDF")
+        @(IsBusy ? "Convirtiendo..." : $"Convertir a {CurrentFormatLabel}")
     </button>
 
     @if (IsBusy)
@@ -36,7 +52,7 @@
     @if (Converted && SelectedFileName is not null)
     {
         <div class="result-sheet">
-            <span class="result-sheet__stamp">Convertido · PDF</span>
+            <span class="result-sheet__stamp">Convertido · @CurrentFormatLabel</span>
             <span class="result-sheet__name">@SelectedFileName</span>
         </div>
     }
@@ -48,7 +64,38 @@
     private bool IsBusy;
     private bool Converted;
     private string? ErrorMessage;
+    private string TargetFormat = "pdf";
+
     private bool HasFile => SelectedFileName is not null;
+
+    // Chips de destino según el tipo de archivo elegido (mismo orden que la matriz del backend).
+    private List<(string Target, string Label)>? Formats => SelectedFileName switch
+    {
+        null => null,
+        { } name when name.EndsWith(".gif", StringComparison.OrdinalIgnoreCase)
+            => [("pdf", "PDF"), ("png", "PNG"), ("jpg", "JPG"), ("webp", "WEBP"), ("bmp", "BMP")],
+        { } name when name.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase)
+            => [("pdf", "PDF"), ("png", "PNG"), ("jpg", "JPG"), ("webp", "WEBP"), ("gif", "GIF")],
+        { } name when name.EndsWith(".tif", StringComparison.OrdinalIgnoreCase)
+            || name.EndsWith(".tiff", StringComparison.OrdinalIgnoreCase)
+            => [("pdf", "PDF"), ("png", "PNG"), ("jpg", "JPG"), ("webp", "WEBP")],
+        { } name when name.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+            || name.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
+            || name.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)
+            || name.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)
+            => [("pdf", "PDF"), ("jpg", "JPG"), ("png", "PNG"), ("webp", "WEBP"), ("gif", "GIF"), ("bmp", "BMP")],
+        _ => [("pdf", "PDF")],
+    };
+
+    private string CurrentFormatLabel =>
+        Formats?.FirstOrDefault(f => f.Target == TargetFormat).Label ?? "PDF";
+
+    private void SelectFormat(string target)
+    {
+        if (!Formats.Any(f => f.Target == target)) return;
+        TargetFormat = target;
+        Converted = false;
+    }
 
     private void OnFileSelected(InputFileChangeEventArgs e)
     {
@@ -56,6 +103,7 @@
         SelectedFileName = null;
         ErrorMessage = null;
         Converted = false;
+        TargetFormat = "pdf";
 
         var file = e.File;
         if (file is null) return;
@@ -80,9 +128,9 @@
         ErrorMessage = null;
         try
         {
-            var pdfBytes = await Api.ConvertAsync(SelectedFile, SelectedFileName!);
-            var outputName = Path.GetFileNameWithoutExtension(SelectedFileName) + ".pdf";
-            await JS.InvokeVoidAsync("downloadFile", outputName, pdfBytes);
+            var outputBytes = await Api.ConvertAsync(SelectedFile, SelectedFileName!, TargetFormat);
+            var outputName = Path.GetFileNameWithoutExtension(SelectedFileName) + "." + TargetFormat;
+            await JS.InvokeVoidAsync("downloadFile", outputName, outputBytes);
             Converted = true;
         } catch (ConversionException ex)
         {
